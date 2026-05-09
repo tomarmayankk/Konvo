@@ -20,9 +20,9 @@ function App() {
     isCheckingAuth,
   } = useAuthStore();
 
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+ useEffect(() => {
+  checkAuth();
+}, []); // Empty array ensures this only runs ONCE on mount
 
  if (isCheckingAuth) {
   return (
