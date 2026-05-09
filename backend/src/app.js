@@ -14,7 +14,22 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: (origin, callback) => {
+      const rawOrigins = process.env.CLIENT_URL || "";
+      const allowedOrigins = rawOrigins
+        .split(",")
+        .map((item) => item.trim().replace(/\/$/, ""))
+        .filter(Boolean);
+
+      // Allow non-browser requests and exact browser origins.
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error(`Origin not allowed by CORS: ${origin}`)
+      );
+    },
     credentials: true,
   })
 );

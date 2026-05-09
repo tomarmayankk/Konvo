@@ -1,35 +1,23 @@
 import { create } from "zustand";
 
 import API from "../services/api";
-
-import useAuthStore from "./useAuthStore";
+import { socket } from "../lib/socket";
 
 const useChatStore = create((set, get) => ({
 
   // FRIENDS
-
   friends: [],
-
   friendRequests: [],
-
   searchResults: [],
-
   searchQuery: "",
 
-
   // CHAT
-
   messages: [],
-
   selectedUser: null,
 
-
   // LOADING
-
   isFriendsLoading: false,
-
   isMessagesLoading: false,
-
   isSendingRequest: false,
   isNotificationOpen: false,
   activeTab: "chat",
@@ -38,24 +26,14 @@ const useChatStore = create((set, get) => ({
   // GET FRIENDS
 
   getFriends: async () => {
-    set({
-      isFriendsLoading: true,
-    });
-
+    set({ isFriendsLoading: true });
     try {
-      const res = await API.get(
-        "/users/friends"
-      );
-
-      set({
-        friends: res.data,
-      });
+      const res = await API.get("/users/friends");
+      set({ friends: res.data });
     } catch (error) {
       console.log(error);
     } finally {
-      set({
-        isFriendsLoading: false,
-      });
+      set({ isFriendsLoading: false });
     }
   },
 
@@ -64,13 +42,8 @@ const useChatStore = create((set, get) => ({
 
   getFriendRequests: async () => {
     try {
-      const res = await API.get(
-        "/users/friend-requests"
-      );
-
-      set({
-        friendRequests: res.data,
-      });
+      const res = await API.get("/users/friend-requests");
+      set({ friendRequests: res.data });
     } catch (error) {
       console.log(error);
     }
@@ -80,26 +53,16 @@ const useChatStore = create((set, get) => ({
   // SEARCH USERS
 
   searchUsers: async (query) => {
-    set({
-      searchQuery: query,
-    });
+    set({ searchQuery: query });
 
     if (!query.trim()) {
-      set({
-        searchResults: [],
-      });
-
+      set({ searchResults: [] });
       return;
     }
 
     try {
-      const res = await API.get(
-        `/users/search?q=${query}`
-      );
-
-      set({
-        searchResults: res.data,
-      });
+      const res = await API.get(`/users/search?q=${query}`);
+      set({ searchResults: res.data });
     } catch (error) {
       console.log(error);
     }
@@ -108,51 +71,31 @@ const useChatStore = create((set, get) => ({
 
   // SEND FRIEND REQUEST
 
-  sendFriendRequest: async (
-    userId
-  ) => {
-    set({
-      isSendingRequest: true,
-    });
-
+  sendFriendRequest: async (userId) => {
+    set({ isSendingRequest: true });
     try {
-      await API.post(
-        `/users/send-request/${userId}`
-      );
+      await API.post(`/users/send-request/${userId}`);
 
-      // REMOVE FROM SEARCH RESULTS
-
+      // Remove from search results optimistically
       set({
-        searchResults:
-          get().searchResults.filter(
-            (user) =>
-              user._id !== userId
-          ),
+        searchResults: get().searchResults.filter(
+          (user) => user._id !== userId
+        ),
       });
     } catch (error) {
       console.log(error);
     } finally {
-      set({
-        isSendingRequest: false,
-      });
+      set({ isSendingRequest: false });
     }
   },
 
 
   // ACCEPT FRIEND REQUEST
 
-  acceptFriendRequest: async (
-    senderId
-  ) => {
+  acceptFriendRequest: async (senderId) => {
     try {
-      await API.post(
-        `/users/accept-request/${senderId}`
-      );
-
-      // REFRESH DATA
-
+      await API.post(`/users/accept-request/${senderId}`);
       get().getFriendRequests();
-
       get().getFriends();
     } catch (error) {
       console.log(error);
@@ -162,14 +105,9 @@ const useChatStore = create((set, get) => ({
 
   // REJECT FRIEND REQUEST
 
-  rejectFriendRequest: async (
-    senderId
-  ) => {
+  rejectFriendRequest: async (senderId) => {
     try {
-      await API.post(
-        `/users/reject-request/${senderId}`
-      );
-
+      await API.post(`/users/reject-request/${senderId}`);
       get().getFriendRequests();
     } catch (error) {
       console.log(error);
@@ -180,24 +118,14 @@ const useChatStore = create((set, get) => ({
   // GET MESSAGES
 
   getMessages: async (userId) => {
-    set({
-      isMessagesLoading: true,
-    });
-
+    set({ isMessagesLoading: true });
     try {
-      const res = await API.get(
-        `/messages/${userId}`
-      );
-
-      set({
-        messages: res.data,
-      });
+      const res = await API.get(`/messages/${userId}`);
+      set({ messages: res.data });
     } catch (error) {
       console.log(error);
     } finally {
-      set({
-        isMessagesLoading: false,
-      });
+      set({ isMessagesLoading: false });
     }
   },
 
@@ -205,23 +133,13 @@ const useChatStore = create((set, get) => ({
   // SEND MESSAGE
 
   sendMessage: async (text) => {
-    const {
-      selectedUser,
-      messages,
-    } = get();
-
+    const { selectedUser, messages } = get();
     try {
       const res = await API.post(
         `/messages/send/${selectedUser._id}`,
         { text }
       );
-
-      set({
-        messages: [
-          ...messages,
-          res.data,
-        ],
-      });
+      set({ messages: [...messages, res.data] });
     } catch (error) {
       console.log(error);
     }
@@ -231,67 +149,43 @@ const useChatStore = create((set, get) => ({
   // SOCKET SUBSCRIBE
 
   subscribeToMessages: () => {
-    const socket =
-      useAuthStore.getState().socket;
-
+    // ✅ Use the socket singleton directly — always the same connected instance
     if (!socket) return;
 
     socket.off("newMessage");
 
-    socket.on(
-      "newMessage",
-      (newMessage) => {
-        const { selectedUser } =
-          get();
+    socket.on("newMessage", (newMessage) => {
+      const { selectedUser } = get();
 
-        if (
-          selectedUser?._id !==
-          newMessage.senderId
-        ) {
-          return;
-        }
+      if (selectedUser?._id !== newMessage.senderId) return;
 
-        set({
-          messages: [
-            ...get().messages,
-            newMessage,
-          ],
-        });
-      }
-    );
+      set({ messages: [...get().messages, newMessage] });
+    });
   },
 
 
   // SOCKET UNSUBSCRIBE
 
   unsubscribeFromMessages: () => {
-    const socket =
-      useAuthStore.getState().socket;
-
+    // ✅ Use the socket singleton directly
     if (!socket) return;
-
     socket.off("newMessage");
   },
 
-  toggleNotifications: () =>
-  set((state) => ({
-    isNotificationOpen:
-      !state.isNotificationOpen,
-  })),
 
-  setActiveTab: (tab) =>
-  set({
-    activeTab: tab,
-  }),
+  // NOTIFICATIONS / TABS
+
+  toggleNotifications: () =>
+    set((state) => ({
+      isNotificationOpen: !state.isNotificationOpen,
+    })),
+
+  setActiveTab: (tab) => set({ activeTab: tab }),
+
 
   // SELECT USER
 
-  setSelectedUser: (
-    selectedUser
-  ) =>
-    set({
-      selectedUser,
-    }),
+  setSelectedUser: (selectedUser) => set({ selectedUser }),
 }));
 
 export default useChatStore;
