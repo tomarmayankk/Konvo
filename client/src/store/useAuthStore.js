@@ -14,9 +14,13 @@ const useAuthStore = create((set, get) => ({
     try {
       const res = await API.get("/auth/check");
       set({ authUser: res.data });
+      if (res.data?.token) {
+        localStorage.setItem("konvo_token", res.data.token);
+      }
       get().connectSocket();
     } catch {
       set({ authUser: null });
+      localStorage.removeItem("konvo_token");
     } finally {
       set({ isCheckingAuth: false });
     }
@@ -26,13 +30,17 @@ const useAuthStore = create((set, get) => ({
   signup: async (data) => {
     set({ isSigningUp: true });
     try {
-      await API.post("/auth/signup", data);
+      const signupRes = await API.post("/auth/signup", data);
+      if (signupRes.data?.token) {
+        localStorage.setItem("konvo_token", signupRes.data.token);
+      }
       const checkRes = await API.get("/auth/check");
       set({ authUser: checkRes.data });
       get().connectSocket();
       return { success: true };
     } catch (error) {
       set({ authUser: null });
+      localStorage.removeItem("konvo_token");
       const message = error.response?.data?.message || "Signup failed";
       return { success: false, message };
     } finally {
@@ -44,13 +52,17 @@ const useAuthStore = create((set, get) => ({
   login: async (data) => {
     set({ isLoggingIn: true });
     try {
-      await API.post("/auth/login", data);
+      const loginRes = await API.post("/auth/login", data);
+      if (loginRes.data?.token) {
+        localStorage.setItem("konvo_token", loginRes.data.token);
+      }
       const checkRes = await API.get("/auth/check");
       set({ authUser: checkRes.data });
       get().connectSocket();
       return { success: true };
     } catch (error) {
       set({ authUser: null });
+      localStorage.removeItem("konvo_token");
       const message = error.response?.data?.message || "Login failed";
       return { success: false, message };
     } finally {
@@ -63,6 +75,7 @@ const useAuthStore = create((set, get) => ({
     try {
       await API.post("/auth/logout");
       set({ authUser: null });
+      localStorage.removeItem("konvo_token");
       get().disconnectSocket();
     } catch (error) {
       console.error("Logout error:", error);
