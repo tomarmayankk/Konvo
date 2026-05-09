@@ -11,6 +11,7 @@ const generateToken = (userId, res) => {
     httpOnly: true,
     sameSite: "none",
     secure: true, // required for Vercel + Render
+    path: "/",           // IMPORTANT FIX
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
