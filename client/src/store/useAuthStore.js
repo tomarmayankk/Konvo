@@ -26,11 +26,13 @@ const useAuthStore = create((set, get) => ({
   signup: async (data) => {
     set({ isSigningUp: true });
     try {
-      const res = await API.post("/auth/signup", data);
-      set({ authUser: res.data });
+      await API.post("/auth/signup", data);
+      const checkRes = await API.get("/auth/check");
+      set({ authUser: checkRes.data });
       get().connectSocket();
       return { success: true };
     } catch (error) {
+      set({ authUser: null });
       const message = error.response?.data?.message || "Signup failed";
       return { success: false, message };
     } finally {
@@ -42,11 +44,13 @@ const useAuthStore = create((set, get) => ({
   login: async (data) => {
     set({ isLoggingIn: true });
     try {
-      const res = await API.post("/auth/login", data);
-      set({ authUser: res.data });
+      await API.post("/auth/login", data);
+      const checkRes = await API.get("/auth/check");
+      set({ authUser: checkRes.data });
       get().connectSocket();
       return { success: true };
     } catch (error) {
+      set({ authUser: null });
       const message = error.response?.data?.message || "Login failed";
       return { success: false, message };
     } finally {
