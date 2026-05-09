@@ -16,26 +16,27 @@ const useAuthStore = create((set, get) => ({
 
   // CHECK AUTH
 
-  checkAuth: async () => {
+checkAuth: async () => {
+  try {
+    const res = await API.get("/auth/check");
+
+    set({ authUser: res.data });
+    get().connectSocket();
+  } catch (error) {
+    console.log("Retrying auth...");
+
     try {
       const res = await API.get("/auth/check");
 
-      set({
-        authUser: res.data,
-      });
-
+      set({ authUser: res.data });
       get().connectSocket();
-    } catch (error) {
-      set({
-        authUser: null,
-      });
-    } finally {
-      set({
-        isCheckingAuth: false,
-      });
+    } catch (err) {
+      set({ authUser: null });
     }
-  },
-
+  } finally {
+    set({ isCheckingAuth: false });
+  }
+},
 
   // SIGNUP
 
